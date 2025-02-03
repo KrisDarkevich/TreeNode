@@ -12,15 +12,17 @@ class TreeNode {
   bool isChecked;
   bool isExpanded;
   List<TreeNode> children;
+  TreeNode? parent;
 
   TreeNode({
     required this.title,
     this.isChecked = false,
     this.isExpanded = false,
+    this.parent,
     List<TreeNode>? children,
   }) : children = children ?? [];
 
-  TreeNode? get parent => null;
+  bool get hasCheckedChildren => children.any((child) => child.isChecked);
 }
 
 class TreeExample extends StatefulWidget {
@@ -34,30 +36,30 @@ class _TreeExampleState extends State<TreeExample> {
   TreeNode root = TreeNode(title: "Корневой элемент");
   int _counter = 1;
 
-  void _updateParentChecks(TreeNode node) {
-    if (node.children.isEmpty) return;
-
-    bool allChecked = node.children.every((child) => child.isChecked);
-    node.isChecked = allChecked;
+  void _updateParentChecks(TreeNode? node) {
+    while (node != null) {
+      node.isChecked = node.hasCheckedChildren;
+      node = node.parent;
+    }
     setState(() {});
   }
 
   void _toggleCheck(TreeNode node) {
     node.isChecked = !node.isChecked;
-    for (var child in node.children) {
-      child.isChecked = node.isChecked;
-    }
+    _updateParentChecks(node.parent);
     setState(() {});
   }
 
   void _addChild(TreeNode node) {
-    node.children.add(TreeNode(title: "Элемент ${_counter++}"));
+    var newNode = TreeNode(title: "Элемент ${_counter++}", parent: node);
+    node.children.add(newNode);
     node.isExpanded = true;
     setState(() {});
   }
 
   void _removeNode(TreeNode parent, TreeNode node) {
     parent.children.remove(node);
+    _updateParentChecks(parent);
     setState(() {});
   }
 
@@ -73,7 +75,6 @@ class _TreeExampleState extends State<TreeExample> {
             onCheckToggle: _toggleCheck,
             onAddChild: _addChild,
             onRemove: _removeNode,
-            updateParentCheck: _updateParentChecks,
           ),
         ],
       ),
@@ -85,7 +86,6 @@ class TreeNodeWidget extends StatefulWidget {
   final TreeNode node;
   final TreeNode? parent;
   final Function(TreeNode) onCheckToggle;
-  final Function(TreeNode) updateParentCheck;
   final Function(TreeNode) onAddChild;
   final Function(TreeNode, TreeNode) onRemove;
 
@@ -96,7 +96,6 @@ class TreeNodeWidget extends StatefulWidget {
     required this.onCheckToggle,
     required this.onAddChild,
     required this.onRemove,
-    required this.updateParentCheck,
   });
 
   @override
@@ -134,9 +133,6 @@ class _TreeNodeWidgetState extends State<TreeNodeWidget> {
               value: widget.node.isChecked,
               onChanged: (value) {
                 widget.onCheckToggle(widget.node);
-                if (widget.parent != null) {
-                  widget.updateParentCheck(widget.parent!);
-                }
               },
             ),
             IconButton(
@@ -161,7 +157,6 @@ class _TreeNodeWidgetState extends State<TreeNodeWidget> {
                         onCheckToggle: widget.onCheckToggle,
                         onAddChild: widget.onAddChild,
                         onRemove: widget.onRemove,
-                        updateParentCheck: widget.updateParentCheck,
                       ))
                   .toList(),
             ),
